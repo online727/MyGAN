@@ -2,4 +2,4 @@
 Learning and implementation of GANs
 
 Processes:
-$$GAN \Rightarrow Conditional-GAN \Rightarrow Tail-GAN \Rightarrow Conditional-GAN$$
+$$GAN \Rightarrow Conditional-GAN \Rightarrow Tail-GAN \Rightarrow Conditional-Tail-GAN$$
