@@ -53,12 +53,12 @@ class Generator_Conv(nn.Module):
             # nn.Dropout(0.3),
             nn.LeakyReLU(True),
 
-            nn.Linear(256, 484),
+            # nn.Linear(256, 484),
             # nn.BatchNorm1d(484),
             # nn.Dropout(0.5),
-            nn.LeakyReLU(True),
+            # nn.LeakyReLU(True),
         )
-        # the output size of self.expand is 484, because the image's size is 22 * 22
+        # the output size of self.expand is 256, because the image's size is 16 * 16
         # this size is set to match the up-sampling process that follows, which will increase the size to 28 * 28
 
         '''
@@ -69,20 +69,20 @@ class Generator_Conv(nn.Module):
         '''
         self.gen = nn.Sequential(
             # 2-d transpose convolutional layer, input channels is 1, output channels is 4, kernel size is 3
-            nn.ConvTranspose2d(1, 4, kernel_size=3),
-            # the output size of this layer is 22 -1 + 3 = 24 * 24
+            nn.ConvTranspose2d(1, 4, kernel_size=5),
+            # the output size of this layer is 16 - 1 + 5 = 20 * 20
             # nn.BatchNorm2d(4),
             nn.LeakyReLU(True),
 
-            # 2-d transpose convolutional layer, input channels is 4, output channels is 8, kernel size is 3
-            nn.ConvTranspose2d(4, 8, kernel_size=3),
-            # the output size of this layer is 24 -1 + 3 = 26 * 26
+            # 2-d transpose convolutional layer, input channels is 4, output channels is 8, kernel size is 5
+            nn.ConvTranspose2d(4, 8, kernel_size=5),
+            # the output size of this layer is 20 - 1 + 5 = 24 * 24
             # nn.BatchNorm2d(8),
             nn.LeakyReLU(True),
 
-            # 2-d transpose convolutional layer, input channels is 8, output channels is 4, kernel size is 3
-            nn.ConvTranspose2d(8, 4, kernel_size=3),
-            # the output size of this layer is 26 -1 + 3 = 28 * 28
+            # 2-d transpose convolutional layer, input channels is 8, output channels is 4, kernel size is 5
+            nn.ConvTranspose2d(8, 4, kernel_size=5),
+            # the output size of this layer is 24 - 1 + 5 = 28 * 28
             # nn.BatchNorm2d(4),
             nn.LeakyReLU(True),
 
@@ -101,9 +101,9 @@ class Generator_Conv(nn.Module):
         # image_noise's shape is (batch_size, 256)
         output = self.expand(image_noise)
 
-        # output's shape is (batch_size, 484)
-        # reshape the output to (batch_size, 1, 22, 22)
-        output = output.view(-1, 1, 22, 22)
+        # output's shape is (batch_size, 256)
+        # reshape the output to (batch_size, 1, 16, 16)
+        output = output.view(-1, 1, 16, 16)
 
         # up-sampling the output to (batch_size, 1, 28, 28)
         output = self.gen(output)

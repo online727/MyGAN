@@ -24,16 +24,16 @@ class config:
     # whether use old model
     from_old_model = False
 
+    # generator's input size
+    # G_type = D_type = 'Linear'
+    G_type = D_type = 'Conv'
+
     # training parameters
-    num_epochs = 20
+    num_epochs = 5 if G_type == 'Conv' else 20
     batch_size = 64
 
     # optimizer parameters
     lr = 0.0003
-
-    # generator's input size
-    G_type = D_type = 'Linear'
-    # G_type = D_type = 'Conv'
 
     img_seed_dim = 100
 
