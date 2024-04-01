@@ -1,5 +1,9 @@
-# MyGAN
-Learning and implementation of GANs
+# GAN (Generative Adversarial Networks)
+This is a repository recording my learning and implementation of GANs.
 
-Processes:
-$$GAN \Rightarrow Conditional-GAN \Rightarrow Tail-GAN \Rightarrow Conditional-Tail-GAN$$
+## Processes
+
+* ***Basic GAN***. Generating handwritting digits using ***MINIST*** dataset.
+* ***Conditional GAN***.
+* ***Tail-GAN***. A GAN taht can capture tail risks.
+* ***Conditional-Tail-GAN***.
