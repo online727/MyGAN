@@ -25,17 +25,15 @@ class Discriminator_Conv(nn.Module):
         
         self.features = nn.Sequential(
             # 2-d convolutional layer, input channels is 1 (grayscale images), output channels is 32, kernel size is 3
-            nn.Conv2d(1, 32, kernel_size=5),
-
+            nn.Conv2d(1, 32, kernel_size=3),
             # batch normalization, 32 is the number of output channels of the last Conv2d layer
-            # nn.BatchNorm2d(32),
-
+            nn.BatchNorm2d(32),
             # Leaky ReLU, 0.2 is the negative values' slope.
             nn.LeakyReLU(0.2),
 
             # 2-d convolutional layer, input channels is 32, output channels is 64, kernel size is 3
-            nn.Conv2d(32, 64, kernel_size=5),
-            # nn.BatchNorm2d(64),
+            nn.Conv2d(32, 64, kernel_size=3),
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
         )
 
@@ -47,14 +45,14 @@ class Discriminator_Conv(nn.Module):
         compute the size of the output of the Conv2d layer: (padding (填充) = 0, stride (步长) = 1)
         new size = (old size - kernel size + 2 * padding) / stride + 1
 
-        so after the first Conv2d layer, the size of the output is (28 - 5 + 0) / 1 + 1 = 24, output channels is 32
-        after the second Conv2d layer, the size of the output is (24 - 5 + 0) / 1 + 1 = 20, output channels is 64
+        so after the first Conv2d layer, the size of the output is (28 - 3 + 0) / 1 + 1 = 26, output channels is 32
+        after the second Conv2d layer, the size of the output is (26 - 3 + 0) / 1 + 1 = 24, output channels is 64
 
         so at the end the size of output is 64 * 24 * 24
         '''
 
         self.classifier = nn.Sequential(
-            nn.Linear(64*20*20, 1024),
+            nn.Linear(64*24*24, 1024),
             nn.LeakyReLU(0.2),
 
             nn.Linear(1024, 512),
@@ -69,8 +67,8 @@ class Discriminator_Conv(nn.Module):
         # get images' features
         features = self.features(image)
 
-        # features' shape is (batch_size, 64, 20, 20)
-        # reshape features to (batch_size, 64 * 20 * 20)
+        # features' shape is (batch_size, 64, 24, 24)
+        # reshape features to (batch_size, 64 * 24 * 24)
         features = features.view(features.shape[0], -1)
 
         # get output
@@ -82,12 +80,12 @@ def get_Discriminator(
         from_old_model=None,
         model_path=None, 
         device='cuda',
-        D_type='Linear'
+        D_type='L'
         ):
 
-    if D_type == 'Linear':
+    if D_type == 'L':
         model = Discriminator_Linear()
-    elif D_type == 'Conv':
+    elif D_type == 'C':
         model = Discriminator_Conv()
     else:
         raise ValueError('D_type should be either Linear or Conv')

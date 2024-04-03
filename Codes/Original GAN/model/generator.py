@@ -49,16 +49,16 @@ class Generator_Conv(nn.Module):
         self.expand = nn.Sequential(
             # 256 is the input size of the generator
             nn.Linear(100, 256),
-            # nn.BatchNorm1d(256),
-            # nn.Dropout(0.3),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
             nn.LeakyReLU(True),
 
-            # nn.Linear(256, 484),
-            # nn.BatchNorm1d(484),
-            # nn.Dropout(0.5),
-            # nn.LeakyReLU(True),
+            nn.Linear(256, 484),
+            nn.BatchNorm1d(484),
+            nn.Dropout(0.5),
+            nn.LeakyReLU(True),
         )
-        # the output size of self.expand is 256, because the image's size is 16 * 16
+        # the output size of self.expand is 256, because the image's size is 22 * 22
         # this size is set to match the up-sampling process that follows, which will increase the size to 28 * 28
 
         '''
@@ -69,28 +69,28 @@ class Generator_Conv(nn.Module):
         '''
         self.gen = nn.Sequential(
             # 2-d transpose convolutional layer, input channels is 1, output channels is 4, kernel size is 3
-            nn.ConvTranspose2d(1, 4, kernel_size=5),
-            # the output size of this layer is 16 - 1 + 5 = 20 * 20
-            # nn.BatchNorm2d(4),
+            nn.ConvTranspose2d(1, 4, kernel_size=3),
+            # the output size of this layer is 22 - 1 + 3 = 24 * 24
+            nn.BatchNorm2d(4),
             nn.LeakyReLU(True),
 
-            # 2-d transpose convolutional layer, input channels is 4, output channels is 8, kernel size is 5
-            nn.ConvTranspose2d(4, 8, kernel_size=5),
-            # the output size of this layer is 20 - 1 + 5 = 24 * 24
-            # nn.BatchNorm2d(8),
+            # 2-d transpose convolutional layer, input channels is 4, output channels is 8, kernel size is 3
+            nn.ConvTranspose2d(4, 8, kernel_size=3),
+            # the output size of this layer is 24 - 1 + 3 = 26 * 26
+            nn.BatchNorm2d(8),
             nn.LeakyReLU(True),
 
-            # 2-d transpose convolutional layer, input channels is 8, output channels is 4, kernel size is 5
-            nn.ConvTranspose2d(8, 4, kernel_size=5),
-            # the output size of this layer is 24 - 1 + 5 = 28 * 28
-            # nn.BatchNorm2d(4),
+            # 2-d transpose convolutional layer, input channels is 8, output channels is 4, kernel size is 3
+            nn.ConvTranspose2d(8, 4, kernel_size=3),
+            # the output size of this layer is 26 - 1 + 3 = 28 * 28
+            nn.BatchNorm2d(4),
             nn.LeakyReLU(True),
 
             # 2-d transpose convolutional layer, input channels is 4, output channels is 1, kernel size is 1
             # this layer is used to reduce the number of channels to 1 to match greyscale images
             nn.ConvTranspose2d(4, 1, kernel_size=1),
             # the output size of this layer is 28 -1 + 1 = 28 * 28
-            # nn.BatchNorm2d(1),
+            nn.BatchNorm2d(1),
             nn.LeakyReLU(True),
 
             # tanh layer, the output of the generator is in the range of [-1, 1]
@@ -98,12 +98,12 @@ class Generator_Conv(nn.Module):
         )
     
     def forward(self, image_noise):
-        # image_noise's shape is (batch_size, 256)
+        # image_noise's shape is (batch_size, 484)
         output = self.expand(image_noise)
 
-        # output's shape is (batch_size, 256)
-        # reshape the output to (batch_size, 1, 16, 16)
-        output = output.view(-1, 1, 16, 16)
+        # output's shape is (batch_size, 484)
+        # reshape the output to (batch_size, 1, 22, 22)
+        output = output.view(-1, 1, 22, 22)
 
         # up-sampling the output to (batch_size, 1, 28, 28)
         output = self.gen(output)
@@ -115,11 +115,11 @@ def get_Generator(
         from_old_model=None,
         model_path=None,
         device='cuda',
-        G_type='Linear'
+        G_type='L'
         ):
-    if G_type == 'Linear':
+    if G_type == 'L':
         model = Generator_Linear()
-    elif G_type == 'Conv':
+    elif G_type == 'C':
         model = Generator_Conv()
     else:
         raise ValueError('G_type should be either Linear or Conv')

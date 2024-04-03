@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import random
 import time
+from operator import itemgetter
 import torch
 import torch.nn as nn
 import torchvision
@@ -21,40 +22,45 @@ class config:
     seed = 26
     use_seed = True
 
-    # whether use old model
-    from_old_model = False
+    # models setting
+    models_setting = {
+        "from_old_model": False,
+        "G_type": "L",
+        "D_type": "C",
+    }
 
-    # generator's input size
-    # G_type = D_type = 'Linear'
-    G_type = D_type = 'Conv'
-
-    # training parameters
-    num_epochs = 5 if G_type == 'Conv' else 20
-    batch_size = 64
-
-    # optimizer parameters
-    lr = 0.0003
-
-    img_seed_dim = 100
-
-    # data path
-    data_path = 'data'
-
-    # model path
-    G_model_path = f'model/{G_type}_G_model.pth'
-    D_model_path = f'model/{D_type}_D_model.pth'
-
-    # result path
-    result_path = 'output_images'
-
-    # loss function
-    criterion = nn.BCELoss()
-
-    # device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # training setting
+    training_setting = {
+        "num_epochs": 10,
+        "batch_size": 64,
+        "lr": 0.0003,
+        "loss": nn.BCELoss(),
+        "img_seed_dim": 100,  # image dimension
+        "D_train_times": 2,
+        "G_train_times": 1,
+        "D_train_label_exchange": 0.05,  # exchange real and fake labels
+        "device": torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    }
 
     def __init__(self):
         self.seed_all()
+        self.name = f"G_{self.models_setting['G_type']}_D_{self.models_setting['D_type']}"
+        G_model_path = f"model/{self.name}_G_model.pth"
+        D_model_path = f"model/{self.name}_D_model.pth"
+        img_output_path = f"output_images/{self.name}"
+
+        self.pathes = {
+            "data_path": 'data',
+            "G_model_path": G_model_path,
+            "D_model_path": D_model_path,
+            "img_output_path": img_output_path,
+            "save_name": self.name
+        }
+
+        if not os.path.exists(img_output_path):
+            os.makedirs(img_output_path)
+
+        print(f"Using device: {self.training_setting['device']}")
 
     def seed_all(self):
         if self.use_seed:
@@ -65,6 +71,33 @@ class config:
             random.seed(self.seed)
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
+
+    def __getattr__(self, item):
+        if not isinstance(item, list):
+            item = [item]
+        lst = []
+        for i in item:
+            if i in self.models_setting:
+                lst.append(self.models_setting[i])
+            elif i in self.training_setting:
+                lst.append(self.training_setting[i])
+            elif i in self.pathes:
+                lst.append(self.pathes[i])
+            else:
+                raise AttributeError(f"'config' object has no attribute '{item}'")
+        return lst if len(lst) > 1 else lst[0]
+
+    @property
+    def models(self):
+        return self.models_setting
+
+    @property
+    def training(self):
+        return self.training_setting
+
+    @property
+    def path(self):
+        return self.pathes
 
 
 class get_my_dataset(Dataset):
@@ -140,15 +173,20 @@ def get_model(from_old_model, G_model_path, D_model_path, device, G_type, D_type
 
 
 def train(
-        models, optimizers, train_set, save_paths, 
-        img_seed_dim=config.img_seed_dim,
-        epochs=config.num_epochs,
-        device=config.device
+        models, optimizers, train_set, config
         ):
-    G_model, D_model = models
-    G_optimizer, D_optimizer = optimizers
-    G_model_path, D_model_path, img_path = save_paths
-    batch_size = train_set.batch_size
+
+    G_model, D_model = models['G'], models['D']
+    G_optimizer, D_optimizer = optimizers['G'], optimizers['D']
+    G_model_path, D_model_path, img_path = config.__getattr__(["G_model_path", "D_model_path", "img_output_path"])
+    epochs, batch_size, lr, criterion, device = \
+        config.__getattr__(
+            ["num_epochs", "batch_size", "lr", "loss", "device"]
+        )
+    img_seed_dim, D_train_times, G_train_times, D_train_label_exchange = \
+        config.__getattr__(
+            ["img_seed_dim", "D_train_times", "G_train_times", "D_train_label_exchange"]
+        )
     D_loss_lst = []
     G_loss_lst = []
 
@@ -164,37 +202,48 @@ def train(
         for index, (images, _) in enumerate(train_set):
             count += 1
             img_num = images.size(0)
-
             real_images = images.to(device)
-            real_labels = Variable(torch.ones(img_num).to(device))
 
-            fake_images = G_model(torch.randn(img_num, img_seed_dim).to(device))
+            real_labels = Variable(1 - (torch.rand(img_num) / 10).to(device))
             fake_labels = Variable(torch.zeros(img_num).to(device))
+            exchange_labels = False
 
-            real_output = D_model(real_images)
-            D_loss_real = criterion(real_output, real_labels)
-            fake_output = D_model(fake_images)
-            D_loss_fake = criterion(fake_output, fake_labels)
+            for _ in range(D_train_times):
+                fake_images = G_model(torch.randn(img_num, img_seed_dim).to(device))
 
-            D_loss = D_loss_real + D_loss_fake
-            D_loss_sum += D_loss.item()
+                if random.uniform(0, 1) < D_train_label_exchange:
+                    real_labels, fake_labels = fake_labels, real_labels
+                    exchange_labels = True
 
-            D_optimizer.zero_grad()
-            D_loss.backward()
-            D_optimizer.step()
+                real_output = D_model(real_images)
+                D_loss_real = criterion(real_output, real_labels)
+                fake_output = D_model(fake_images)
+                D_loss_fake = criterion(fake_output, fake_labels)
 
-            fake_images = G_model(torch.randn(img_num, img_seed_dim).to(device))
-            fake_output = D_model(fake_images)
+                D_loss = D_loss_real + D_loss_fake
+                D_loss_sum += D_loss.item()
 
-            G_loss = criterion(fake_output, real_labels)
-            G_loss_sum += G_loss.item()
+                D_optimizer.zero_grad()
+                D_loss.backward()
+                D_optimizer.step()
 
-            G_optimizer.zero_grad()
-            G_loss.backward()
-            G_optimizer.step()
+                if exchange_labels:
+                    real_labels, fake_labels = fake_labels, real_labels
+
+            for _ in range(G_train_times):
+                fake_images = G_model(torch.randn(img_num, img_seed_dim).to(device))
+                fake_output = D_model(fake_images)
+
+                G_loss = criterion(fake_output, real_labels)
+                G_loss_sum += G_loss.item()
+
+                G_optimizer.zero_grad()
+                G_loss.backward()
+                G_optimizer.step()
 
             if (index + 1) % 200 == 0:
-                print(f'[epoch: {epoch + 1} batch: {index + 1}/{batch_num}] D_loss: {D_loss.item():.6f}, G_loss: {G_loss.item():.6f}')
+                print(f'[epoch: {epoch + 1}/{epochs} batch: {index + 1}/{batch_num}] '
+                      f'D_loss: {D_loss.item():.6f}, G_loss: {G_loss.item():.6f}')
         
         torch.save(G_model.state_dict(), G_model_path)
         torch.save(D_model.state_dict(), D_model_path)
@@ -206,10 +255,10 @@ def train(
             fake_images = fake_images.clamp(0, 1)
 
             fake_images = fake_images.view(-1, 1, 28, 28)
-            save_image(fake_images, f'{img_path}/epoch_{epoch}.png')
+            save_image(fake_images, f'{img_path}/epoch_{epoch + 1}.png')
 
-            g_loss = G_loss_sum / count
-            d_loss = D_loss_sum / count
+            g_loss = G_loss_sum / count / G_train_times
+            d_loss = D_loss_sum / count / D_train_times
             G_loss_lst.append(g_loss)
             D_loss_lst.append(d_loss)
 
@@ -222,21 +271,6 @@ def train(
 
 if __name__ == '__main__':
     my_config = config()
-    from_old_model = my_config.from_old_model
-    img_seed_dim = my_config.img_seed_dim
-
-    G_model_path = my_config.G_model_path
-    D_model_path = my_config.D_model_path
-    G_type = my_config.G_type
-    D_type = my_config.D_type
-    criterion = my_config.criterion
-
-    device = my_config.device
-    print('Using device:', device)
-
-    img_output_path = f'{my_config.result_path}/{G_type}'
-    if not os.path.exists(img_output_path):
-        os.makedirs(img_output_path)
 
     features_transform = transforms.Compose([
         # 将像素值从 [0, 255] 转换到 [0, 1]
@@ -254,11 +288,17 @@ if __name__ == '__main__':
         features_transform=features_transform,
         target_transform=target_transform
     )
-
     train_dataloader = my_data.train_data_loader
     test_dataloader = my_data.test_data_loader
 
-    G_model, D_model = get_model(from_old_model, G_model_path, D_model_path, device, G_type, D_type)
+    G_model, D_model = get_model(
+        my_config.from_old_model,
+        my_config.G_model_path,
+        my_config.D_model_path,
+        my_config.device,
+        my_config.G_type,
+        my_config.D_type
+    )
 
     G_optimizer = Adam(
         G_model.parameters(), lr=my_config.lr
@@ -266,26 +306,29 @@ if __name__ == '__main__':
     D_optimizer = Adam(
         D_model.parameters(), lr=my_config.lr
         )
-    
-    models = (G_model, D_model)
-    optimizers = (G_optimizer, D_optimizer)
-    save_paths = (G_model_path, D_model_path, img_output_path)
+
+    models = {
+        'G': G_model,
+        'D': D_model
+    }
+    optimizers = {
+        'G': G_optimizer,
+        'D': D_optimizer
+    }
 
     G_loss_lst, D_loss_lst = train(
-        models, optimizers, train_dataloader, save_paths, 
-        img_seed_dim=img_seed_dim,
-        epochs=my_config.num_epochs,
-        device=device
+        models=models, optimizers=optimizers, train_set=train_dataloader, config=my_config
         )
-    
+
     plt.figure()
     plt.plot(G_loss_lst, label='G_loss')
     plt.plot(D_loss_lst, label='D_loss')
     plt.legend()
-    plt.savefig(f'./{G_type}_loss.png')
+    plt.suptitle(f'{my_config.save_name} G and D loss')
+    plt.savefig(f'{my_config.save_name}_loss.png')
 
     df = pd.DataFrame({
         'G_loss': G_loss_lst,
         'D_loss': D_loss_lst
     })
-    df.to_csv(f'{G_type}_loss.csv', index=False)
+    df.to_csv(f'{my_config.save_name}_loss.csv', index=False)
