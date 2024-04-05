@@ -7,22 +7,18 @@ class Generator_Linear(nn.Module):
     def __init__(self):
         super(Generator_Linear, self).__init__()
         self.gen = nn.Sequential(
-            # 256 is the input size of the generator
+            # 100 is the input size of the generator
             nn.Linear(100, 256),
             # nn.BatchNorm1d(256),
-            # dropout layer, 0.3 is the probability of an element to be zeroed
-            # nn.Dropout(0.3),
-            nn.LeakyReLU(True),
+            nn.ReLU(True),
 
             nn.Linear(256, 512),
             # nn.BatchNorm1d(512),
-            # nn.Dropout(0.4),
-            nn.LeakyReLU(True),
+            nn.ReLU(True),
 
             nn.Linear(512, 1024),
             # nn.BatchNorm1d(1024),
-            # nn.Dropout(0.5),
-            nn.LeakyReLU(True),
+            nn.ReLU(True),
 
             # 784 is the output size of the generator, because the image's size is 28 * 28
             nn.Linear(1024, 784),
@@ -47,7 +43,7 @@ class Generator_Conv(nn.Module):
         super(Generator_Conv, self).__init__()
 
         self.expand = nn.Sequential(
-            # 256 is the input size of the generator
+            # 100 is the input size of the generator
             nn.Linear(100, 256),
             nn.BatchNorm1d(256),
             nn.Dropout(0.3),

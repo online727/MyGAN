@@ -6,9 +6,14 @@ class Discriminator_Linear(nn.Module):
     def __init__(self):
         super(Discriminator_Linear, self).__init__()
         self.dis = nn.Sequential(
-            nn.Linear(784, 256),
+            nn.Linear(784, 512),
+            # nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 256),
+            # nn.BatchNorm1d(256),
             nn.LeakyReLU(0.2),
             nn.Linear(256, 256),
+            # nn.BatchNorm1d(256),
             nn.LeakyReLU(0.2),
             nn.Linear(256, 1),
             nn.Sigmoid())

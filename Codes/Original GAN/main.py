@@ -26,17 +26,25 @@ class config:
     models_setting = {
         "from_old_model": False,
         "G_type": "L",
-        "D_type": "C",
+        "D_type": "L",
     }
 
     # training setting
+    """
+    Generator: linear & Discriminator: linear: 
+      -- num_epochs: 50, lr = 0.0003, D_train_times = 3, G_train_times = 1
+    Generator: linear & Discriminator: conv:
+      -- num_epochs: 25, lr = 0.0001, D_train_times = 3, G_train_times = 1
+    Generator: conv & Discriminator: conv:
+      -- num_epochs: 25, lr = 0.0003, D_train_times = 1, G_train_times = 1
+    """
     training_setting = {
-        "num_epochs": 10,
+        "num_epochs": 50,
         "batch_size": 64,
         "lr": 0.0003,
         "loss": nn.BCELoss(),
         "img_seed_dim": 100,  # image dimension
-        "D_train_times": 2,
+        "D_train_times": 1,
         "G_train_times": 1,
         "D_train_label_exchange": 0.05,  # exchange real and fake labels
         "device": torch.device('cuda' if torch.cuda.is_available() else 'cpu')
