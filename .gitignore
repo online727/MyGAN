@@ -1,1 +1,11 @@
 *.pth
+
+# latex files
+*.aux
+*.bbl
+*.log
+*.out
+*.gz
+*.toc
+*.cls
+*.sty
