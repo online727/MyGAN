@@ -13,6 +13,7 @@
     \section{Original GAN}
 
     \subsection{Introduction}
+
     Generative Adversarial Networks (GANs) \cite{goodfellow_generative_2014}，生成对抗网络。
 
     生成模型，通过一个生成器 (Generator, G) 和一个鉴别器 (Discriminator, D) 的对抗性训练，G 用来估计真实数据的概率分布，D 用来估计样本来自真实数据的概率。G 的训练过程，即为最大化 D 的犯错概率。由此，G 和 D 之间形成了一个对抗性的博弈，G 努力学习真实数据分布，D 努力提升辨别真假数据分布的能力，形成一个 minimax 双人游戏。在 G 和 D 的任意函数空间中，存在唯一解 -- 纳什均衡，使得 G 重现真实数据分布，D 无法区分真假数据，即概率判断为 $\frac{1}{2}$。
@@ -166,6 +167,26 @@
     \end{proof}
 
     \rmk 在实践中，对抗网络通过函数 $G(z;\theta_g)$ 代表了一个 $p_g$ 的有限分布族，我们优化的是 $\theta_g$ 而不是 $p_g$ 本身，所以证明并不适用。
+
+    \section{Conditional GAN}
+
+    \subsection{Introduction}
+
+    Conditional GAN (cGAN) \cite{mirza_con_gan_2014}, 条件生成对抗网络。
+
+    通过在模型中添加额外信息作为条件，来引导数据的生成过程，这种条件可以基于类别标签、用于内绘的部分数据，如 \cite{Goodfellow_DBM_2013}，甚至是来自不同模态的数据。
+
+    GAN 可以拓展至 Conditional GAN，通过对生成器和鉴别器添加额外的信息 $\boldsymbol{y}$。$\boldsymbol{y}$ 可以是任何形式的辅助信息，如类别标签或来自其他模态的数据。我们可以将 $\boldsymbol{y}$ 作为附加输入层输入到鉴别器和生成器中，从而进行调节。
+
+    在生成器中，先前的输入噪声 $p_{\boldsymbol{z}}(\boldsymbol{z})$ 和 $\boldsymbol{y}$ 被组合为一个联合的隐藏表示，而对抗性训练的框架允许各种灵活的表示方式。
+
+    在鉴别器中，$\boldsymbol{x}$ 和 $\boldsymbol{y}$ 被输入至一个判别函数中，同样，该判别函数可以是任意的多层感知器。
+
+    双方的 minmax 游戏的目标函数如式 所示：
+    \begin{equation}
+        \min_{G}\max_{D}V(D,G)=\mathbb{E}_{\boldsymbol{x}\sim p_{data}(\boldsymbol{x})}[\log D(\boldsymbol{x}|\boldsymbol{y})]+\mathbb{E}_{\boldsymbol{z}\sim p_{\boldsymbol{z}}(\boldsymbol{z})}[\log(1-D(G(\boldsymbol{z}|\boldsymbol{y})))]
+        \label{cGAN objective function}
+    \end{equation}
 
     \clearpage
     \bibliographystyle{unsrt}
