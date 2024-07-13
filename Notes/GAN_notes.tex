@@ -1,4 +1,5 @@
 \documentclass{myarticle}
+\usepackage{amsmath}
 
 \title{Notes about Generative Adversarial Networks}
 \author{赵浩翰}
@@ -214,7 +215,7 @@
 
     $G$ 的估计，就是将给定 $x\in\mathcal{X}$ 下 $G(\eta, x)$ 和 $P_{Y|X}$ 的条件分布进行匹配，而这一匹配，在 $X$ 的边缘分布确定时，与将 $X, G(\eta, X)$ 和 $(X, Y)$ 的联合分布进行匹配是等价的 (Lemma 2.2 in \cite{Zhou_Jiao_2022})。所以，估计 $G$ 的方式转化为：找到一个联合分布 $P_{X, G(\eta, X)}$，使得 $P_{X, G(\eta, X)}$ 与 $P_{X, Y}$ 的联合分布匹配。
 
-    \section{Distribution matching estimation}
+    \subsection{Distribution matching estimation}
 
     概括：使用 $f-$ 距离的变分形式度量两个联合分布之间的距离，具体到 KL 散度上，即最小化 KL 散度形式的变分 $f-$ 距离。由此得到 Con-GAN 的损失函数：
     \begin{equation}
@@ -222,6 +223,56 @@
         \label{eq: Con-GAN loss}
     \end{equation}
 
+    则，最佳条件生成器 $G^{*}$ 以及最佳鉴别器 $D^{*}$ 可由如下 minimax 问题定义：
+    \begin{equation}
+        (G^{*},D^{*})=\arg\min_{G}\arg\max_{D}\mathcal{L}(G,D)
+        \label{eq: Con-GAN minmax}
+    \end{equation}
+
+    假设 $\{(X_{i},Y_{i}),i=1,\cdots,n\}$ 满足 $i.i.d$，生成于 $P_{XY}$， $\eta_{i},i=1,\cdots,n$ 独立同分布生成于 $P_{\eta}$。则考虑如下 $\mathcal{L}(G,D)$ 的实证版本：
+    \begin{equation}
+        \hat{\mathcal{L}}(G,D)=\frac{1}{n}\sum_{i=1}^{n}D(X_{i},G(\eta_{i},X_{i})) - \frac{1}{n}\sum_{i=1}^{n}\exp(D(X_{i},Y_{i}))
+        \label{eq: Con-GAN empirical loss}
+    \end{equation}
+
+    \subsection{Implementation}
+
+    GCDS 的实现：训练生成器 $G_{\boldsymbol{\theta}}$ 和鉴别器 $D_{\boldsymbol{\phi}}$。
+    
+    激活函数：Rectified Linear Unit (ReLU)。
+
+    迭代训练鉴别器和生成器，即迭代更新其参数 $\boldsymbol{\phi}$ 和 $\boldsymbol{\theta}$：
+    \begin{enumerate}[label=(\arabic*)]
+        \item 固定 $\boldsymbol{\theta}$，通过提升 \eqref{eq: Con-GAN empirical loss} 关于 $\boldsymbol{\phi}$ 的随机梯度来更新鉴别器；
+        \item 固定 $\boldsymbol{\phi}$，通过降低 \eqref{eq: Con-GAN empirical loss} 关于 $\boldsymbol{\theta}$ 的随机梯度来更新生成器。
+    \end{enumerate}
+
+    训练过程描述如下：
+    \begin{algorithm}
+        \caption{Generative Conditional Distribution Sample}
+        \label{alg2: GCDS}
+
+        \textbf{Input:} (a) Pairs of $(X_{i},Y_{i}),i=1,\cdots,n$; (b) Independent samples $\eta_{i},i=1,\cdots,n$ from $P_{\eta}$.
+
+        \textbf{Output:} Conditional generator $G_{\boldsymbol{\hat{\theta}}}$ and discriminator $D_{\boldsymbol{\hat{\phi}}}$.
+        
+        \begin{algorithmic}[1]
+            \While {not converged do}
+                \State Compute $\widetilde{Y}_i = G_{\theta}(\eta_i, X_i), \quad i = 1, 2, \ldots, n$. Let $S_1 = \{(X_i, Z_i, V_i) = (X_i, Y_i, 1), \; i = 1, \ldots, n \}$ and $S_2 = \{(X_i, Z_i, V_i) = (X_i, \widetilde{Y}_i, -1), \; i = n + 1, \ldots, 2n\}$.
+
+                \State Randomly select $B/2$ samples from $S_1$ and another $B/2$ samples from $S_2$. Denote the subscripts of the selected samples by $\{b_i : i = 1, \ldots, B \}$.
+
+                \State Update $D_{\phi}$ by ascending its stochastic gradient:
+                $$\nabla_{\phi} \left\{ \frac{1}{B} \sum_{i=1}^{B} \left[ D_{\phi}(X_{b_i}, Z_{b_i}) \mathbf{1}_{\{V_{b_i} = -1\}} - \exp(D_{\phi}(X_{b_i}, Z_{b_i})) \mathbf{1}_{\{V_{b_i} = 1\}} \right] \right\}$$
+
+                \State Randomly select $B$ samples from $\{(X_i, Y_i), \; i = 1, \ldots, n \}$. Denote the subscripts of the selected samples by $\{b_i : i = 1, \ldots, B \}$
+
+                \State Update $G_{\theta}$ by descending its stochastic gradient:
+                $$\nabla_{\theta} \left\{ \frac{1}{B} \sum_{i=1}^{B} D_{\phi}(X_{b_i}, G_{\theta}(\eta_{b_i}, X_{b_i})) \right\}$$
+            \EndWhile
+        \end{algorithmic}
+    \end{algorithm}
+    
     
     \clearpage
     \bibliographystyle{unsrt}
